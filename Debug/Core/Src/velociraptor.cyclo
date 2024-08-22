@@ -1,5 +1,6 @@
-../Core/Src/velociraptor.c:24:6:velociraptor_start	2
-../Core/Src/velociraptor.c:50:6:velociraptor_setmotorspeed	14
-../Core/Src/velociraptor.c:95:6:velociraptor_brake	1
-../Core/Src/velociraptor.c:109:6:velociraptor_sensor_handler	5
-../Core/Src/velociraptor.c:146:6:velociraptor_encoder_handler	6
+../Core/Src/velociraptor.c:37:6:velociraptor_start	2
+../Core/Src/velociraptor.c:67:6:velociraptor_setmotorspeed	14
+../Core/Src/velociraptor.c:112:6:velociraptor_brake	1
+../Core/Src/velociraptor.c:126:6:velociraptor_sensor_handler	5
+../Core/Src/velociraptor.c:165:6:velociraptor_encoder_handler	6
+../Core/Src/velociraptor.c:211:6:velociraptor_main_loop	6

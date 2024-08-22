@@ -21,6 +21,19 @@ struct
 	uint16_t lwr_thr[2];
 } encoders_data;
 
+typedef enum
+{
+	STOPPED,
+	RUNNING
+} velo_mde_state_t;
+
+velo_mde_state_t velo_mde_state = STOPPED;
+uint8_t new_data_flag = 0;
+
+uint32_t prev_dwt_tick = 0;
+uint32_t cycle_dwt_ticks = 0;
+uint32_t isr_dwt_ticks = 0;
+
 void velociraptor_start(void)
 {
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
@@ -45,6 +58,10 @@ void velociraptor_start(void)
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) encoders_data.adc_read, 2);
 	HAL_TIM_Base_Start(&htim3);
+
+	CoreDebug -> DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT -> CYCCNT = 0;
+	DWT -> CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
 void velociraptor_setmotorspeed(uint8_t n_motor, float speed)
@@ -134,6 +151,8 @@ void velociraptor_sensor_handler(void)
 			error = (float) weighted_sum / (float) active_sensors;
 			error -= 3.5f;
 		}
+
+		new_data_flag = 1;
 	}
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, n_sensor & 1);
@@ -145,6 +164,8 @@ void velociraptor_sensor_handler(void)
 
 void velociraptor_encoder_handler(void)
 {
+	uint32_t dwt_start_tick = DWT -> CYCCNT;
+
 	for(uint8_t i = 0; i < 2; i++)
 	{
 		if(encoders_data.prev_state[i] == 0)
@@ -178,4 +199,46 @@ void velociraptor_encoder_handler(void)
 	}
 	encoders_data.tick_cntr++;
 
+	isr_dwt_ticks = DWT -> CYCCNT - dwt_start_tick;
+	cycle_dwt_ticks = DWT -> CYCCNT - prev_dwt_tick;
+	prev_dwt_tick = DWT -> CYCCNT;
+
+}
+
+float base_speed = 0.75f;
+float max_error = 0.5f;
+
+void velociraptor_main_loop(void)
+{
+	switch(velo_mde_state)
+	{
+	case STOPPED:
+		velociraptor_setmotorspeed(MOTOR_L, 0);
+		velociraptor_setmotorspeed(MOTOR_R, 0);
+
+		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET)
+		{
+			velo_mde_state = RUNNING;
+		}
+		break;
+
+	case RUNNING:
+		if(new_data_flag)
+		{
+			new_data_flag = 0;
+			velociraptor_setmotorspeed(MOTOR_L, base_speed + error * (max_error / 3.5f));
+			velociraptor_setmotorspeed(MOTOR_R, base_speed - error * (max_error / 3.5f));
+		}
+
+		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET)
+		{
+			velo_mde_state = STOPPED;
+			velociraptor_brake();
+		}
+
+		break;
+
+	default:
+		velo_mde_state = STOPPED;
+	}
 }

@@ -126,42 +126,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET)
-	{
-		HAL_Delay(1000);
-
-		velociraptor_setmotorspeed(MOTOR_L, 1.0f);
-		velociraptor_setmotorspeed(MOTOR_R, 1.0f);
-
-		HAL_Delay(1000);
-
-		velociraptor_brake();
-
-		HAL_Delay(10);
-
-		velociraptor_setmotorspeed(MOTOR_L, 0.0f);
-		velociraptor_setmotorspeed(MOTOR_R, 0.0f);
-	}
-
-	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET)
-	{
-		HAL_Delay(1000);
-
-		velociraptor_setmotorspeed(MOTOR_L, 0.5f);
-		velociraptor_setmotorspeed(MOTOR_R, 0.5f);
-
-		HAL_Delay(1000);
-
-		velociraptor_brake();
-
-		HAL_Delay(10);
-
-		velociraptor_setmotorspeed(MOTOR_L, 0.0f);
-		velociraptor_setmotorspeed(MOTOR_R, 0.0f);
-	}
-
-	velociraptor_setmotorspeed(MOTOR_L, global_motor_speed);
-	velociraptor_setmotorspeed(MOTOR_R, global_motor_speed);
+	velociraptor_main_loop();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -339,7 +304,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 720-1;
+  htim3.Init.Period = 1080-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)

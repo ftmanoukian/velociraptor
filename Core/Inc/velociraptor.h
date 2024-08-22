@@ -22,5 +22,6 @@ void velociraptor_setmotorspeed(uint8_t n_motor, float speed);
 void velociraptor_brake(void);
 void velociraptor_sensor_handler(void);
 void velociraptor_encoder_handler(void);
+void velociraptor_main_loop(void);
 
 #endif /* INC_VELOCIRAPTOR_H_ */
