@@ -1,0 +1,17 @@
+# STM32CubeIDE specific
+.settings/
+.project
+.cproject
+*.launch
+*.d
+*.o
+*.out
+*.elf
+*.bin
+*.hex
+
+# Other common patterns
+*.log
+*.tmp
+*.swp
+*.DS_Store
