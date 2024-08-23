@@ -3,4 +3,4 @@
 ../Core/Src/velociraptor.c:112:6:velociraptor_brake	1
 ../Core/Src/velociraptor.c:126:6:velociraptor_sensor_handler	5
 ../Core/Src/velociraptor.c:165:6:velociraptor_encoder_handler	6
-../Core/Src/velociraptor.c:211:6:velociraptor_main_loop	6
+../Core/Src/velociraptor.c:211:6:velociraptor_main_loop	7

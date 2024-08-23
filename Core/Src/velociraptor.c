@@ -208,6 +208,15 @@ void velociraptor_encoder_handler(void)
 float base_speed = 0.75f;
 float max_error = 0.5f;
 
+float max_speed = 1.0f;
+float e_prev = 0;
+float e_int = 0;
+float e_dv = 0;
+float e_norm;
+float e_pid = 0;
+float kp = 0, ki = 0, kd = 0;
+float vel_l = 0, vel_r = 0;
+
 void velociraptor_main_loop(void)
 {
 	switch(velo_mde_state)
@@ -226,8 +235,26 @@ void velociraptor_main_loop(void)
 		if(new_data_flag)
 		{
 			new_data_flag = 0;
-			velociraptor_setmotorspeed(MOTOR_L, base_speed + error * (max_error / 3.5f));
-			velociraptor_setmotorspeed(MOTOR_R, base_speed - error * (max_error / 3.5f));
+			/*float local_base_speed = 1.0f - (error / 3.5f * -1 * (error < 0)) * 0.01f;
+			float vel_l = local_base_speed + error;
+			float vel_r = local_base_speed - error;
+			velociraptor_setmotorspeed(MOTOR_L, vel_l);
+			velociraptor_setmotorspeed(MOTOR_R, vel_r);*/
+
+			e_norm = error / 3.5f; // Normalización de error a -1, 1
+
+			e_int += e_norm;
+			e_dv = e_norm - e_prev;
+			e_prev = e_norm;
+
+			e_pid = kp * e_norm + ki * e_int + kd * e_dv;
+			base_speed = max_speed * (1.0f - e_pid * (e_pid < 0));
+
+			vel_l = base_speed + e_norm;
+			vel_r = base_speed - e_norm;
+
+			velociraptor_setmotorspeed(MOTOR_L, vel_l);
+			velociraptor_setmotorspeed(MOTOR_R, vel_r);
 		}
 
 		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET)
