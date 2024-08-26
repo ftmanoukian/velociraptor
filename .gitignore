@@ -11,7 +11,7 @@
 *.hex
 *.su
 *.cyclo
-
+Debug/*
 
 # Other common patterns
 *.log
