@@ -19,6 +19,13 @@ extern struct
 	float kp, ki, kd;
 } pid;
 
+extern struct
+{
+	float max_speed, base_speed;
+	float l_speed, r_speed;
+	float brake_factor;
+} speed;
+
 enum
 {
 	idle,
@@ -27,6 +34,8 @@ enum
 } comms_state = idle;
 
 uint8_t rx_buff[11];
+uint8_t tx_buff[3] = "ok";
+uint8_t err_tx_buff[4] = "err";
 uint8_t rx_process_flag = 0;
 
 void velociraptor2_comms_init(void)
@@ -57,12 +66,26 @@ void velociraptor2_comms_loop(void)
 		{
 		case 'p':
 			pid.kp = atoff((char *) &(rx_buff[1]));
+			HAL_UART_Transmit_DMA(&huart1, tx_buff, 3);
 			break;
 		case 'i':
 			pid.ki = atoff((char *) &(rx_buff[1]));
+			HAL_UART_Transmit_DMA(&huart1, tx_buff, 3);
 			break;
 		case 'd':
 			pid.kd = atoff((char *) &(rx_buff[1]));
+			HAL_UART_Transmit_DMA(&huart1, tx_buff, 3);
+			break;
+		case 'M':
+			speed.max_speed = atoff((char *) &(rx_buff[1]));
+			HAL_UART_Transmit_DMA(&huart1, tx_buff, 3);
+			break;
+		case 'b':
+			speed.brake_factor = atoff((char *) &(rx_buff[1]));
+			HAL_UART_Transmit_DMA(&huart1, tx_buff, 3);
+			break;
+		default:
+			HAL_UART_Transmit_DMA(&huart1, err_tx_buff, 4);
 			break;
 		}
 

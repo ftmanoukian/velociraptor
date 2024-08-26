@@ -18,6 +18,12 @@ typedef enum
 	BUFFER_1
 } active_buffer_t;
 
+enum
+{
+	stopped,
+	running
+} robot_state = stopped;
+
 struct
 {
 	uint16_t sensor_val[16];
@@ -40,6 +46,13 @@ struct
 	float error_dv;
 	float kp, ki, kd;
 } pid;
+
+struct
+{
+	float max_speed, base_speed;
+	float l_speed, r_speed;
+	float brake_factor;
+} speed;
 
 uint8_t cross_line_flag = 0;
 float * error_ptr = &(line_sensor.error);
@@ -64,10 +77,13 @@ void velociraptor2_init(void)
 	pid.correction = 0.f;
 	pid.error_dv = 0.f;
 	pid.error_int = 0.f;
-	pid.kp = 0.f;
+	pid.kp = 1.f;
 	pid.ki = 0.f;
 	pid.kd = 0.f;
 	pid.prev_error = 0.f;
+
+	speed.max_speed = 1.0f;
+	speed.brake_factor = 1.0f;
 
 	// Timer adc
 	HAL_TIM_Base_Start_IT(&htim2);
@@ -83,9 +99,45 @@ float max_speed = 1.0f;
 
 void velociraptor2_main_loop(void)
 {
+	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET && robot_state == stopped)
+	{
+		robot_state = running;
+	}
+	else if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET && robot_state == running)
+	{
+		robot_state = stopped;
+	}
+
 	if(line_sensor.flag_data_ready)
 	{
 		velociraptor2_calc_error();
+
+		switch(robot_state)
+		{
+		case stopped:
+			velociraptor2_brake();
+			break;
+
+		case running:
+			pid.error_int += line_sensor.error;
+			pid.error_dv = line_sensor.error - pid.prev_error;
+
+			pid.correction = pid.kp * line_sensor.error;
+			pid.correction += pid.ki * pid.error_int;
+			pid.correction += pid.kd * pid.error_dv;
+
+			if(pid.correction >= 0) speed.base_speed = 1.0f - pid.correction * speed.brake_factor;
+			if(pid.correction < 0) speed.base_speed = 1.0f + pid.correction * speed.brake_factor;
+
+			speed.l_speed = speed.max_speed * (speed.base_speed - pid.correction);
+			speed.r_speed = speed.max_speed * (speed.base_speed + pid.correction);
+
+			pid.prev_error = line_sensor.error;
+
+			velociraptor2_setmotorspeed(MOTOR_L, speed.l_speed);
+			velociraptor2_setmotorspeed(MOTOR_R, speed.r_speed);
+			break;
+		}
 	}
 }
 
