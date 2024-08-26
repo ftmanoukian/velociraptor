@@ -8,7 +8,7 @@
 #include "velociraptor.h"
 
 extern TIM_HandleTypeDef htim2,htim3,htim4;
-extern ADC_HandleTypeDef hadc1,hadc2;
+extern ADC_HandleTypeDef hadc2;
 
 struct
 {
@@ -20,6 +20,19 @@ struct
 	uint16_t upp_thr[2];
 	uint16_t lwr_thr[2];
 } encoders_data;
+
+struct
+{
+	float base_speed;
+	float max_speed;
+	float e_prev;
+	float e_int;
+	float e_dv;
+	float e_norm;
+	float e_pid;
+	float kp, ki, kd;
+	float vel_l, vel_r;
+} pid_data;
 
 typedef enum
 {
@@ -41,6 +54,8 @@ void velociraptor_start(void)
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 
+	HAL_TIM_Base_Start_IT(&htim2);
+
 	for(uint8_t i = 0; i < 2; i++)
 	{
 		encoders_data.step_ticks[i] = 0;
@@ -56,7 +71,23 @@ void velociraptor_start(void)
 
 	encoders_data.tick_cntr = 0;
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *) encoders_data.adc_read, 2);
+	pid_data.max_speed = 0.8f;
+	pid_data.base_speed = 0;
+
+	pid_data.e_prev = 0;
+	pid_data.e_int = 0;
+	pid_data.e_dv = 0;
+	pid_data.e_norm = 0;
+	pid_data.e_pid = 0;
+
+	pid_data.kp = 1;
+	pid_data.ki = 0.0;
+	pid_data.kd = 0.0;
+
+	pid_data.vel_l = 0;
+	pid_data.vel_r = 0;
+
+	//HAL_ADC_Start_DMA(&hadc1, (uint32_t *) encoders_data.adc_read, 2);
 	HAL_TIM_Base_Start(&htim3);
 
 	CoreDebug -> DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -205,18 +236,6 @@ void velociraptor_encoder_handler(void)
 
 }
 
-float base_speed = 0.75f;
-float max_error = 0.5f;
-
-float max_speed = 1.0f;
-float e_prev = 0;
-float e_int = 0;
-float e_dv = 0;
-float e_norm;
-float e_pid = 0;
-float kp = 0, ki = 0, kd = 0;
-float vel_l = 0, vel_r = 0;
-
 void velociraptor_main_loop(void)
 {
 	switch(velo_mde_state)
@@ -235,26 +254,24 @@ void velociraptor_main_loop(void)
 		if(new_data_flag)
 		{
 			new_data_flag = 0;
-			/*float local_base_speed = 1.0f - (error / 3.5f * -1 * (error < 0)) * 0.01f;
-			float vel_l = local_base_speed + error;
-			float vel_r = local_base_speed - error;
-			velociraptor_setmotorspeed(MOTOR_L, vel_l);
-			velociraptor_setmotorspeed(MOTOR_R, vel_r);*/
 
-			e_norm = error / 3.5f; // Normalización de error a -1, 1
+			pid_data.e_norm = error / 3.5f; // Normalización de error a -1, 1
 
-			e_int += e_norm;
-			e_dv = e_norm - e_prev;
-			e_prev = e_norm;
+			pid_data.e_int += pid_data.e_norm; // error integral
+			pid_data.e_dv = pid_data.e_norm - pid_data.e_prev; // error diferencial
+			pid_data.e_prev = pid_data.e_norm; // actualizacion de registro previo
 
-			e_pid = kp * e_norm + ki * e_int + kd * e_dv;
-			base_speed = max_speed * (1.0f - e_pid * (e_pid < 0));
+			pid_data.e_pid = pid_data.kp * pid_data.e_norm;
+			pid_data.e_pid += pid_data.ki * pid_data.e_int;
+			pid_data.e_pid += pid_data.kd * pid_data.e_dv;
 
-			vel_l = base_speed + e_norm;
-			vel_r = base_speed - e_norm;
+			pid_data.base_speed = pid_data.max_speed * (1.0f - pid_data.e_pid * (pid_data.e_pid < 0));
 
-			velociraptor_setmotorspeed(MOTOR_L, vel_l);
-			velociraptor_setmotorspeed(MOTOR_R, vel_r);
+			pid_data.vel_l = pid_data.base_speed + pid_data.e_pid;
+			pid_data.vel_r = pid_data.base_speed - pid_data.e_pid;
+
+			velociraptor_setmotorspeed(MOTOR_L, pid_data.vel_l);
+			velociraptor_setmotorspeed(MOTOR_R, pid_data.vel_r);
 		}
 
 		if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET)

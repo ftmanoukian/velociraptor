@@ -9,6 +9,9 @@
 *.elf
 *.bin
 *.hex
+*.su
+*.cyclo
+
 
 # Other common patterns
 *.log
