@@ -21,7 +21,8 @@ typedef enum
 enum
 {
 	stopped,
-	running
+	running,
+	braking
 } robot_state = stopped;
 
 struct
@@ -55,6 +56,7 @@ struct
 } speed;
 
 uint8_t cross_line_flag = 0;
+uint32_t brake_timer = 0;
 float * error_ptr = &(line_sensor.error);
 
 void velociraptor2_init(void)
@@ -79,11 +81,11 @@ void velociraptor2_init(void)
 	pid.error_int = 0.f;
 	pid.kp = 1.f;
 	pid.ki = 0.f;
-	pid.kd = 0.f;
+	pid.kd = 0.6f;
 	pid.prev_error = 0.f;
 
 	speed.max_speed = 1.0f;
-	speed.brake_factor = 1.0f;
+	speed.brake_factor = 0.7f;
 
 	// Timer adc
 	HAL_TIM_Base_Start_IT(&htim2);
@@ -102,10 +104,17 @@ void velociraptor2_main_loop(void)
 	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET && robot_state == stopped)
 	{
 		robot_state = running;
+		pid.error_int = 0.f;
 	}
 	else if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET && robot_state == running)
 	{
 		robot_state = stopped;
+	}
+	if(robot_state == running && cross_line_flag)
+	{
+		brake_timer = 500;
+		robot_state = braking;
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 	}
 
 	if(line_sensor.flag_data_ready)
@@ -129,13 +138,22 @@ void velociraptor2_main_loop(void)
 			if(pid.correction >= 0) speed.base_speed = 1.0f - pid.correction * speed.brake_factor;
 			if(pid.correction < 0) speed.base_speed = 1.0f + pid.correction * speed.brake_factor;
 
-			speed.l_speed = speed.max_speed * (speed.base_speed - pid.correction);
-			speed.r_speed = speed.max_speed * (speed.base_speed + pid.correction);
+			speed.l_speed = speed.max_speed * (speed.base_speed + pid.correction);
+			speed.r_speed = speed.max_speed * (speed.base_speed - pid.correction);
 
 			pid.prev_error = line_sensor.error;
 
 			velociraptor2_setmotorspeed(MOTOR_L, speed.l_speed);
 			velociraptor2_setmotorspeed(MOTOR_R, speed.r_speed);
+			break;
+
+		case braking:
+			velociraptor2_brake();
+			if(!brake_timer)
+			{
+				robot_state = running;
+				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+			}
 			break;
 		}
 	}
@@ -144,6 +162,7 @@ void velociraptor2_main_loop(void)
 void velociraptor2_calc_error(void)
 {
 	line_sensor.flag_data_ready = 0;
+	cross_line_flag = 1;
 
 	uint16_t * buffer_ptr = line_sensor.sensor_val;
 	buffer_ptr += 8 * (line_sensor.active_buffer == BUFFER_1);
@@ -161,9 +180,12 @@ void velociraptor2_calc_error(void)
 
 		active_sensors += cond;
 		weighted_sum += n * cond;
+		if(n == 0 || n == 7) cross_line_flag &= cond;
 	}
 
-	if(active_sensors >= 6)
+	//HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, !cross_line_flag);
+
+	/*if(active_sensors >= 6)
 	{
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 		cross_line_flag = 1;
@@ -172,7 +194,7 @@ void velociraptor2_calc_error(void)
 	{
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 		cross_line_flag = 0;
-	}
+	}*/
 	if(active_sensors > 0)
 	{
 		line_sensor.error = (float) weighted_sum / ((float) active_sensors * 3.5f);

@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "velociraptor.h"
 #include "velociraptor2.h"
+#include "velociraptor2_comms.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

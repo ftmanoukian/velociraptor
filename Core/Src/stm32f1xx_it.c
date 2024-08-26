@@ -63,6 +63,7 @@ extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 extern uint8_t rx_process_flag;
+extern uint32_t brake_timer;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -192,7 +193,7 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+  if(brake_timer) brake_timer--;
   /* USER CODE END SysTick_IRQn 1 */
 }
 
