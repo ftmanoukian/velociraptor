@@ -6,12 +6,10 @@
 *.d
 *.o
 *.out
-*.elf
 *.bin
 *.hex
 *.su
 *.cyclo
-Debug/*
 
 # Other common patterns
 *.log

@@ -8,6 +8,7 @@
 #include "main.h"
 #include "velociraptor2.h"
 #include "velociraptor2_comms.h"
+#include "ADXL345.h"
 
 extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim2, htim4;
@@ -61,6 +62,24 @@ float * error_ptr = &(line_sensor.error);
 
 void velociraptor2_init(void)
 {
+	ADXL345_Deselect();
+	if (ADXL345_CheckDevice()) {
+		for(uint8_t i = 0; i < 2; i++)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+			HAL_Delay(50);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			HAL_Delay(50);
+		}
+	}
+	else
+	{
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+		HAL_Delay(50);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	}
+	ADXL345_Init();
+
 	// Datos sensores
 	line_sensor.active_sensor = 0;
 	line_sensor.active_buffer = BUFFER_0;
