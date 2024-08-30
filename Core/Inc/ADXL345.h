@@ -11,6 +11,15 @@
 #define ADXL345_SPI_CS_PORT GPIOA
 #define ADXL345_SPI_CS_PIN GPIO_PIN_15
 
+typedef struct
+{
+	uint8_t active_buffer;
+	struct
+	{
+		int16_t x, y, z;
+	} accel[2];
+} adxl_data_t;
+
 void ADXL345_Select(void);
 void ADXL345_Deselect(void);
 void ADXL345_Init(void);

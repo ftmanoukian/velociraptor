@@ -13,11 +13,7 @@
 extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim2, htim4;
 
-typedef enum
-{
-	BUFFER_0,
-	BUFFER_1
-} active_buffer_t;
+extern adxl_data_t adxl_data;
 
 enum
 {
@@ -32,8 +28,13 @@ struct
 	uint16_t threshold[8];
 	uint8_t active_sensor;
 	uint8_t flag_data_ready;
-	active_buffer_t active_buffer;
+	uint8_t out_of_sight;
 	float error, prev_error;
+	enum
+	{
+		BUFFER_0,
+		BUFFER_1
+	} active_buffer;
 	enum
 	{
 		W_OVER_B,
@@ -52,9 +53,20 @@ struct
 struct
 {
 	float max_speed, base_speed;
+	float slope_correction;
 	float l_speed, r_speed;
 	float brake_factor;
 } speed;
+
+struct
+{
+	GPIO_TypeDef * gpio[4];
+	uint16_t pin[4];
+	GPIO_PinState state[4];
+	GPIO_PinState prev_state[4];
+	uint8_t flag[4];
+	uint8_t ticks[4];
+} debounce_data;
 
 uint8_t cross_line_flag = 0;
 uint32_t brake_timer = 0;
@@ -80,12 +92,30 @@ void velociraptor2_init(void)
 	}
 	ADXL345_Init();
 
+	debounce_data.gpio[0] = GPIOB;
+	debounce_data.gpio[1] = GPIOB;
+	debounce_data.gpio[2] = GPIOC;
+	debounce_data.gpio[3] = GPIOC;
+	debounce_data.pin[0] = GPIO_PIN_11;
+	debounce_data.pin[1] = GPIO_PIN_10;
+	debounce_data.pin[2] = GPIO_PIN_15;
+	debounce_data.pin[3] = GPIO_PIN_14;
+
+	for(uint8_t i = 0; i < 4; i++)
+	{
+		debounce_data.state[i] = GPIO_PIN_SET;
+		debounce_data.prev_state[i]	= GPIO_PIN_SET;
+		debounce_data.flag[i] = 0;
+		debounce_data.ticks[i] = 0;
+	}
+
 	// Datos sensores
 	line_sensor.active_sensor = 0;
 	line_sensor.active_buffer = BUFFER_0;
 	line_sensor.flag_data_ready = 0;
 	line_sensor.prev_error = 0.f;
 	line_sensor.track_color = W_OVER_B;
+	//específico al array de sensores que estoy usando!!!
 	line_sensor.threshold[0] = 1000;
 	line_sensor.threshold[1] = 1500;
 	line_sensor.threshold[2] = 1500;
@@ -94,6 +124,7 @@ void velociraptor2_init(void)
 	line_sensor.threshold[5] = 1500;
 	line_sensor.threshold[6] = 1500;
 	line_sensor.threshold[7] = 1500;
+	line_sensor.out_of_sight = 0;
 
 	pid.correction = 0.f;
 	pid.error_dv = 0.f;
@@ -105,6 +136,7 @@ void velociraptor2_init(void)
 
 	speed.max_speed = 1.0f;
 	speed.brake_factor = 0.7f;
+	speed.slope_correction = 0.0f;
 
 	// Timer adc
 	HAL_TIM_Base_Start_IT(&htim2);
@@ -116,65 +148,94 @@ void velociraptor2_init(void)
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 }
 
-float max_speed = 1.0f;
+void velociraptor2_motors_pid(void)
+{
+	velociraptor2_calc_error();
+
+	pid.error_int += line_sensor.error;
+	pid.error_dv = line_sensor.error - pid.prev_error;
+
+	pid.correction = pid.kp * line_sensor.error;
+	pid.correction += pid.ki * pid.error_int;
+	pid.correction += pid.kd * pid.error_dv;
+
+	if(pid.correction >= 0) speed.base_speed = 1.0f - pid.correction * speed.brake_factor;
+	if(pid.correction < 0) speed.base_speed = 1.0f + pid.correction * speed.brake_factor;
+
+	speed.l_speed = speed.max_speed * (1.0f - speed.slope_correction) * (speed.base_speed + pid.correction);
+	speed.r_speed = speed.max_speed * (1.0f - speed.slope_correction) * (speed.base_speed - pid.correction);
+
+	pid.prev_error = line_sensor.error;
+
+	velociraptor2_setmotorspeed(MOTOR_L, speed.l_speed);
+	velociraptor2_setmotorspeed(MOTOR_R, speed.r_speed);
+}
+
+void velociraptor2_slope_correction(void)
+{
+	uint16_t current_x = adxl_data.accel[adxl_data.active_buffer].x;
+
+	if(current_x < 50)
+	{
+		speed.slope_correction = 0.0f;
+	}
+	else if(current_x >= 50 && current_x < 100)
+	{
+		speed.slope_correction = (current_x - 50) / 500.f;
+	}
+	else
+	{
+		speed.slope_correction = 1.0f;
+	}
+}
 
 void velociraptor2_main_loop(void)
 {
-	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == GPIO_PIN_RESET && robot_state == stopped)
-	{
-		robot_state = running;
-		pid.error_int = 0.f;
-	}
-	else if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_14) == GPIO_PIN_RESET && robot_state == running)
-	{
-		robot_state = stopped;
-	}
-	if(robot_state == running && cross_line_flag)
-	{
-		brake_timer = 500;
-		robot_state = braking;
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-	}
+	velociraptor2_debounce_loop();
 
-	if(line_sensor.flag_data_ready)
+	switch(robot_state)
 	{
-		velociraptor2_calc_error();
+	case stopped:
 
-		switch(robot_state)
+		if(debounce_data.flag[3] && !debounce_data.state[3])
 		{
-		case stopped:
-			velociraptor2_brake();
-			break;
-
-		case running:
-			pid.error_int += line_sensor.error;
-			pid.error_dv = line_sensor.error - pid.prev_error;
-
-			pid.correction = pid.kp * line_sensor.error;
-			pid.correction += pid.ki * pid.error_int;
-			pid.correction += pid.kd * pid.error_dv;
-
-			if(pid.correction >= 0) speed.base_speed = 1.0f - pid.correction * speed.brake_factor;
-			if(pid.correction < 0) speed.base_speed = 1.0f + pid.correction * speed.brake_factor;
-
-			speed.l_speed = speed.max_speed * (speed.base_speed + pid.correction);
-			speed.r_speed = speed.max_speed * (speed.base_speed - pid.correction);
-
-			pid.prev_error = line_sensor.error;
-
-			velociraptor2_setmotorspeed(MOTOR_L, speed.l_speed);
-			velociraptor2_setmotorspeed(MOTOR_R, speed.r_speed);
-			break;
-
-		case braking:
-			velociraptor2_brake();
-			if(!brake_timer)
-			{
-				robot_state = running;
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-			}
-			break;
+			debounce_data.flag[3] = 0;
+			robot_state = running;
+			pid.error_int = 0.f;
 		}
+		break;
+
+	case running:
+		if(line_sensor.flag_data_ready)
+		{
+			velociraptor2_slope_correction();
+			if(speed.slope_correction > 0.95f)
+			{
+				velociraptor2_brake();
+			}
+			else
+			{
+				velociraptor2_motors_pid();
+			}
+		}
+
+
+		if(debounce_data.flag[2] && !debounce_data.state[2])
+		{
+			velociraptor2_brake();
+			debounce_data.flag[2] = 0;
+			robot_state = stopped;
+		}
+		break;
+
+	case braking:
+
+		if(!brake_timer)
+		{
+			robot_state = running;
+		}
+
+		break;
 	}
 }
 
@@ -202,22 +263,18 @@ void velociraptor2_calc_error(void)
 		if(n == 0 || n == 7) cross_line_flag &= cond;
 	}
 
-	//HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, !cross_line_flag);
-
-	/*if(active_sensors >= 6)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-		cross_line_flag = 1;
-	}
-	else
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-		cross_line_flag = 0;
-	}*/
 	if(active_sensors > 0)
 	{
 		line_sensor.error = (float) weighted_sum / ((float) active_sensors * 3.5f);
 		line_sensor.error -= 1.f;
+		line_sensor.out_of_sight = 0;
+	}
+	else
+	{
+		if(line_sensor.error > 0.95f || line_sensor.error < -0.95f)
+		{
+			line_sensor.out_of_sight = 1;
+		}
 	}
 
 	line_sensor.prev_error = line_sensor.error;
@@ -289,5 +346,27 @@ void velociraptor2_setmotorspeed(uint8_t n_motor, float speed)
 	{
 		__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_1 : TIM_CHANNEL_3, 0);
 		__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_2 : TIM_CHANNEL_4, 0);
+	}
+}
+
+void velociraptor2_debounce_loop(void)
+{
+	for(uint8_t i = 0; i < 4; i++)
+	{
+		GPIO_PinState current_state = HAL_GPIO_ReadPin(debounce_data.gpio[i], debounce_data.pin[i]);
+		if(current_state != debounce_data.prev_state[i])
+		{
+			debounce_data.prev_state[i] = current_state;
+			debounce_data.ticks[i] = DEBOUNCE_TICKS;
+		}
+		if(debounce_data.ticks[i])
+		{
+			debounce_data.ticks[i]--;
+			if(!debounce_data.ticks[i])
+			{
+				debounce_data.state[i] = current_state;
+				debounce_data.flag[i] = 1;
+			}
+		}
 	}
 }

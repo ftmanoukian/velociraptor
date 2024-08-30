@@ -10,14 +10,7 @@
 
 extern SPI_HandleTypeDef hspi1;
 
-struct
-{
-	uint8_t active_buffer;
-	struct
-	{
-		int16_t x, y, z;
-	} accel[2];
-} adxl_data;
+adxl_data_t adxl_data;
 
 void ADXL345_Select(void) {
     HAL_GPIO_WritePin(ADXL345_SPI_CS_PORT, ADXL345_SPI_CS_PIN, GPIO_PIN_RESET); // CS low
@@ -45,13 +38,8 @@ void ADXL345_Init(void) {
 	// Map Data Ready interrupt to INT1
 	ADXL345_WriteRegister(0x2F, 0x00); // INT_MAP register (0x2F): Route Data Ready to INT1 (bit 0 = 0)
 
-	/*ADXL345_Deselect();
-	volatile uint8_t aux = ADXL345_ReadRegister(0x00);
-	asm volatile("nop");
-	aux = ADXL345_ReadRegister(0x2c);
-	asm volatile("nop");
-	aux = ADXL345_ReadRegister(0x30);
-	asm volatile("nop");*/
+	// lectura inicial para disparar el modo continuo (si no no anda!)
+	ADXL345_ReadXYZ(&(adxl_data.accel[0].x), &(adxl_data.accel[0].y), &(adxl_data.accel[0].z));
 }
 
 uint8_t ADXL345_ReadRegister(uint8_t reg) {
