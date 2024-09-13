@@ -20,7 +20,7 @@ enum
 {
 	stopped,
 	running,
-	braking
+	cleaning
 } robot_state = stopped;
 
 struct
@@ -148,7 +148,7 @@ void velociraptor3_pid_init(void)
 	// TODO: cargar desde mem
 	pid.kp = 1.f;
 	pid.ki = 0.f;
-	pid.kd = 0.6f;
+	pid.kd = .8f;
 
 	pid.prev_error = 0.f;
 }
@@ -185,6 +185,14 @@ void velociraptor3_main_loop(void)
 			pid.error_int = 0.f;
 			robot_state = running;
 		}
+		else if(debounce[1].flag && !debounce[1].state)
+		{
+			debounce[1].flag = 0;
+			speed.l_speed = 1.0f;
+			speed.r_speed = 1.0f;
+			velociraptor3_setpwm();
+			robot_state = cleaning;
+		}
 		
 		break;
 
@@ -204,6 +212,19 @@ void velociraptor3_main_loop(void)
 		}
 
 		break;
+
+	case cleaning:
+
+		if(debounce[1].flag && debounce[1].state)
+		{
+			debounce[1].flag = 0;
+			speed.l_speed = 0.0f;
+			speed.r_speed = 0.0f;
+			velociraptor3_setpwm();
+			robot_state = stopped;
+		}
+
+		break;
 	}
 }
 
@@ -215,7 +236,7 @@ void velociraptor3_timer_handler(void)
 void velociraptor3_sensors_routine(void)
 {
 	uint16_t adc_read = HAL_ADC_GetValue(&hadc2);
-	sensors.sensor_val[sensors.active_sensor] = (uint8_t) (adc_read > sensors.threshold[sensors.active_sensor]);
+	sensors.sensor_val[sensors.active_sensor] = (uint8_t) (adc_read > sensors.threshold[sensors.active_sensor % 8]);
 
 	sensors.active_sensor += 1;
 	sensors.active_sensor %= 16;
@@ -246,7 +267,15 @@ void velociraptor3_motors_pid(void)
 	pid.correction += pid.ki * pid.error_int;
 	pid.correction += pid.kd * pid.error_dv;
 
-	speed.base_speed = 1.0f - pid.correction * speed.brake_factor;
+	speed.base_speed = 1.0f;
+	if(pid.correction > 0.0f)
+	{
+		speed.base_speed -= pid.correction * speed.brake_factor;
+	}
+	else
+	{
+		speed.base_speed += pid.correction * speed.brake_factor;
+	}
 	speed.base_speed *= (1.0f - speed.slope_correction);
 
 	speed.l_speed = speed.max_speed * (speed.base_speed + pid.correction);
@@ -275,23 +304,16 @@ void velociraptor3_calc_error(void)
 	}
 
 	// auxiliar nomá
-	black_count = 7 - white_count;
-
-	// si es auto, determino a cuál corresponde según mayoría de sensores activos
-	if(sensors.track_color == AUTO)
-	{
-		if(white_count < 4) sensors.track_color = W_OVER_B;
-		else sensors.track_color = B_OVER_W;
-	}
+	black_count = 8 - white_count;
 
 	// división sólo si hay sensores activos!!!
-	if(sensors.track_color == W_OVER_B && white_count > 0)
+	if(sensors.track_color == W_OVER_B || (sensors.track_color == AUTO && white_count < 4))
 	{
-		sensors.error = (float) white_sum / ((float) white_count * 3.5f);
+		if(white_count > 0) sensors.error = (float) white_sum / ((float) white_count * 3.5f);
 	}
-	else if(sensors.track_color == B_OVER_W && black_count > 0)
+	else if(sensors.track_color == B_OVER_W || (sensors.track_color == AUTO && black_count < 4))
 	{
-		sensors.error = (float) black_sum / ((float) black_count * 3.5f);
+		if(black_count > 0) sensors.error = (float) black_sum / ((float) black_count * 3.5f);
 	}
 
 	sensors.prev_error = sensors.error;
