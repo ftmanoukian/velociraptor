@@ -11,6 +11,7 @@
 extern SPI_HandleTypeDef hspi1;
 
 adxl_data_t adxl_data;
+//adxl_data2_t adxl_data2;
 
 void ADXL345_Select(void) {
     HAL_GPIO_WritePin(ADXL345_SPI_CS_PORT, ADXL345_SPI_CS_PIN, GPIO_PIN_RESET); // CS low
