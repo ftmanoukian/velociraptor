@@ -31,7 +31,7 @@ struct
 	GPIO_PinState prev_state;
 	uint8_t flag;
 	uint8_t ticks;
-} debounce;
+} debounce[4];
 
 struct
 {
@@ -72,7 +72,7 @@ struct
 	float brake_factor;
 } speed;
 
-void velociraptor2_init(void)
+void velociraptor3_init(void)
 {
 	ADXL345_Deselect();
 	if (ADXL345_CheckDevice())
@@ -103,7 +103,7 @@ void velociraptor2_init(void)
 void velociraptor3_timers_init(void)
 {
 	// Timer ADC
-	HAL_TIM_BASE_Start_IT(&htim2);
+	HAL_TIM_Base_Start_IT(&htim2);
 
 	// Timer Motores
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
@@ -193,7 +193,7 @@ void velociraptor3_main_loop(void)
 		if(sensors.flag_data_ready)
 		{
 			sensors.flag_data_ready = 0;
-			velociraptor2_motors_pid();
+			velociraptor3_motors_pid();
 		}
 		
 		if(debounce[3].flag && !debounce[3].state)
@@ -228,9 +228,9 @@ void velociraptor3_sensors_routine(void)
 		sensors.flag_data_ready = 1;
 	}
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, line_sensor.active_sensor & 1);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, line_sensor.active_sensor & 2);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, line_sensor.active_sensor & 4);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, sensors.active_sensor & 1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, sensors.active_sensor & 2);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, sensors.active_sensor & 4);
 
 	HAL_ADC_Start(&hadc2);
 }
@@ -257,8 +257,7 @@ void velociraptor3_motors_pid(void)
 
 void velociraptor3_calc_error(void)
 {
-	float weighted_sum = 0;
-	uint16_t * buffer_ptr;
+	uint8_t * buffer_ptr;
 	uint8_t white_count = 0, black_count;
 	float white_sum = 0, black_sum = 0;
 
@@ -269,9 +268,9 @@ void velociraptor3_calc_error(void)
 	// análisis de sensores
 	for(uint8_t n = 0; n < 8; n++)
 	{
-		white_count += sensors.val[n];
+		white_count += sensors.sensor_val[n];
 		
-		if(!sensors.val[n]) black_sum += ((float) n - 3.5f);
+		if(!sensors.sensor_val[n]) black_sum += ((float) n - 3.5f);
 		else white_sum += ((float) n - 3.5f);
 	}
 
@@ -312,7 +311,7 @@ void velociraptor3_setpwm(void)
 	float local_speed;
 	const float lower_lim = (float) MIN_SPEED / (float) MAX_SPEED;
 
-	for(uint8_t n_motor = MOTOR_L; n_motor <= MOTOR_R; i++)
+	for(uint8_t n_motor = MOTOR_L; n_motor <= MOTOR_R; n_motor++)
 	{
 		local_speed = (n_motor == MOTOR_L) ? speed.l_speed : speed.r_speed;
 
@@ -326,7 +325,7 @@ void velociraptor3_setpwm(void)
 			local_speed += lower_lim;
 			local_speed *= (MAX_SPEED - 1);
 
-			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_3 : TIM_CHANNEL_2, (uint16_t) speed);
+			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_3 : TIM_CHANNEL_2, (uint16_t) local_speed);
 			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_4 : TIM_CHANNEL_1, 0);
 		}
 		else if(local_speed > 0.0f)
@@ -335,7 +334,7 @@ void velociraptor3_setpwm(void)
 			local_speed += lower_lim;
 			local_speed *= (MAX_SPEED - 1);
 
-			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_4 : TIM_CHANNEL_1, (uint16_t) speed);
+			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_4 : TIM_CHANNEL_1, (uint16_t) local_speed);
 			__HAL_TIM_SET_COMPARE(&htim4, (n_motor == MOTOR_L) ? TIM_CHANNEL_3 : TIM_CHANNEL_2, 0);
 		}
 		else

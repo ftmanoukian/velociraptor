@@ -21,9 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "velociraptor.h"
-#include "velociraptor2.h"
-#include "velociraptor2_comms.h"
+#include "velociraptor3.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -113,16 +111,16 @@ int main(void)
   MX_TIM2_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  velociraptor2_init();
-  velociraptor2_comms_init();
+  velociraptor3_init();
+  //velociraptor2_comms_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	velociraptor2_main_loop();
-	velociraptor2_comms_loop();
+	velociraptor3_main_loop();
+	//velociraptor3_comms_loop();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

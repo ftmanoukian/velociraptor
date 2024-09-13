@@ -15,7 +15,7 @@
 
 #define DEBOUNCE_TICKS			20
 
-void velociraptor2_init(void);
+void velociraptor3_init(void);
 void velociraptor3_timers_init(void);
 void velociraptor3_debounce_init(void);
 void velociraptor3_speed_init(void);

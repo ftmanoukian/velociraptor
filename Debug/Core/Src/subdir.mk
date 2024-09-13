@@ -12,9 +12,7 @@ C_SRCS += \
 ../Core/Src/syscalls.c \
 ../Core/Src/sysmem.c \
 ../Core/Src/system_stm32f1xx.c \
-../Core/Src/velociraptor.c \
-../Core/Src/velociraptor2.c \
-../Core/Src/velociraptor2_comms.c 
+../Core/Src/velociraptor3.c 
 
 OBJS += \
 ./Core/Src/ADXL345.o \
@@ -24,9 +22,7 @@ OBJS += \
 ./Core/Src/syscalls.o \
 ./Core/Src/sysmem.o \
 ./Core/Src/system_stm32f1xx.o \
-./Core/Src/velociraptor.o \
-./Core/Src/velociraptor2.o \
-./Core/Src/velociraptor2_comms.o 
+./Core/Src/velociraptor3.o 
 
 C_DEPS += \
 ./Core/Src/ADXL345.d \
@@ -36,9 +32,7 @@ C_DEPS += \
 ./Core/Src/syscalls.d \
 ./Core/Src/sysmem.d \
 ./Core/Src/system_stm32f1xx.d \
-./Core/Src/velociraptor.d \
-./Core/Src/velociraptor2.d \
-./Core/Src/velociraptor2_comms.d 
+./Core/Src/velociraptor3.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -48,7 +42,7 @@ Core/Src/%.o Core/Src/%.su Core/Src/%.cyclo: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/ADXL345.cyclo ./Core/Src/ADXL345.d ./Core/Src/ADXL345.o ./Core/Src/ADXL345.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f1xx_hal_msp.cyclo ./Core/Src/stm32f1xx_hal_msp.d ./Core/Src/stm32f1xx_hal_msp.o ./Core/Src/stm32f1xx_hal_msp.su ./Core/Src/stm32f1xx_it.cyclo ./Core/Src/stm32f1xx_it.d ./Core/Src/stm32f1xx_it.o ./Core/Src/stm32f1xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f1xx.cyclo ./Core/Src/system_stm32f1xx.d ./Core/Src/system_stm32f1xx.o ./Core/Src/system_stm32f1xx.su ./Core/Src/velociraptor.cyclo ./Core/Src/velociraptor.d ./Core/Src/velociraptor.o ./Core/Src/velociraptor.su ./Core/Src/velociraptor2.cyclo ./Core/Src/velociraptor2.d ./Core/Src/velociraptor2.o ./Core/Src/velociraptor2.su ./Core/Src/velociraptor2_comms.cyclo ./Core/Src/velociraptor2_comms.d ./Core/Src/velociraptor2_comms.o ./Core/Src/velociraptor2_comms.su
+	-$(RM) ./Core/Src/ADXL345.cyclo ./Core/Src/ADXL345.d ./Core/Src/ADXL345.o ./Core/Src/ADXL345.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f1xx_hal_msp.cyclo ./Core/Src/stm32f1xx_hal_msp.d ./Core/Src/stm32f1xx_hal_msp.o ./Core/Src/stm32f1xx_hal_msp.su ./Core/Src/stm32f1xx_it.cyclo ./Core/Src/stm32f1xx_it.d ./Core/Src/stm32f1xx_it.o ./Core/Src/stm32f1xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f1xx.cyclo ./Core/Src/system_stm32f1xx.d ./Core/Src/system_stm32f1xx.o ./Core/Src/system_stm32f1xx.su ./Core/Src/velociraptor3.cyclo ./Core/Src/velociraptor3.d ./Core/Src/velociraptor3.o ./Core/Src/velociraptor3.su
 
 .PHONY: clean-Core-2f-Src
 

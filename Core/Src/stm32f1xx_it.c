@@ -22,8 +22,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "velociraptor.h"
-#include "velociraptor2.h"
+#include "velociraptor3.h"
 #include "ADXL345.h"
 /* USER CODE END Includes */
 
@@ -63,8 +62,7 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
-extern uint8_t rx_process_flag;
-extern uint32_t brake_timer;
+//extern uint8_t rx_process_flag;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -194,7 +192,7 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  if(brake_timer) brake_timer--;
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -229,7 +227,7 @@ void DMA1_Channel5_IRQHandler(void)
   /* USER CODE END DMA1_Channel5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
   /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-  rx_process_flag = 1;
+  //rx_process_flag = 1;
   /* USER CODE END DMA1_Channel5_IRQn 1 */
 }
 
@@ -243,7 +241,7 @@ void TIM2_IRQHandler(void)
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
-  velociraptor2_timer_handler();
+  velociraptor3_timer_handler();
   /* USER CODE END TIM2_IRQn 1 */
 }
 
