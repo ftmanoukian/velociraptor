@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "velociraptor3.h"
+#include "velociraptor3_comms.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +54,7 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-float global_motor_speed;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,7 +121,6 @@ int main(void)
   while (1)
   {
 	velociraptor3_main_loop();
-	//velociraptor3_comms_loop();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

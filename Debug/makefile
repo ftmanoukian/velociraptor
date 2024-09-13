@@ -61,7 +61,7 @@ main-build: velociraptor.elf secondary-outputs
 
 # Tool invocations
 velociraptor.elf velociraptor.map: $(OBJS) $(USER_OBJS) /Users/franciscomanoukian/STM32CubeIDE/workspace_1.13.2/velociraptor/STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "velociraptor.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/Users/franciscomanoukian/STM32CubeIDE/workspace_1.13.2/velociraptor/STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="velociraptor.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "velociraptor.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/Users/franciscomanoukian/STM32CubeIDE/workspace_1.13.2/velociraptor/STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="velociraptor.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

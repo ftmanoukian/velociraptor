@@ -43,7 +43,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+/* begin momento cabeza */
+uint8_t led_parp_flag = 0;
+uint16_t led_parp_cnt = 0;
+uint8_t led_parp_state = 0;
+/* end momento cabeza */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,7 +66,7 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
-//extern uint8_t rx_process_flag;
+extern uint8_t rx_flag;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -188,11 +192,24 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
+  if(led_parp_flag)
+  {
+	  led_parp_cnt++;
+	  led_parp_cnt %= 500;
+	  if(!led_parp_cnt)
+	  {
+		  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, led_parp_state);
+		  led_parp_state = !led_parp_state;
+	  }
+  }
+  else
+  {
+	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+  }
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+  velociraptor3_debounce_loop();
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -227,7 +244,7 @@ void DMA1_Channel5_IRQHandler(void)
   /* USER CODE END DMA1_Channel5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_rx);
   /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-  //rx_process_flag = 1;
+  rx_flag = 1;
   /* USER CODE END DMA1_Channel5_IRQn 1 */
 }
 

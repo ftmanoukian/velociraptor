@@ -13,12 +13,18 @@
 
 extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim2, htim4;
+extern memory_data_t memory_data;
 
 extern adxl_data2_t adxl_data2;
+
+/* begin momento cabeza */
+extern uint8_t led_parp_flag;
+/* end momento cabeza */
 
 enum
 {
 	stopped,
+	comms,
 	running,
 	cleaning
 } robot_state = stopped;
@@ -98,6 +104,8 @@ void velociraptor3_init(void)
 	velociraptor3_pid_init();
 	velociraptor3_speed_init();
 	velociraptor3_timers_init();
+
+	led_parp_flag = 0;
 }
 
 void velociraptor3_timers_init(void)
@@ -159,7 +167,7 @@ void velociraptor3_sensors_init(void)
 	sensors.active_buffer = BUFFER_0;
 	sensors.flag_data_ready = 0;
 	sensors.prev_error = 0.f;
-	sensors.track_color = B_OVER_W;		// TODO: cargar desde mem
+	sensors.track_color = W_OVER_B;		// TODO: cargar desde mem
 	
 	sensors.threshold[0] = 1000;
 	sensors.threshold[1] = 1500;
@@ -173,16 +181,15 @@ void velociraptor3_sensors_init(void)
 
 void velociraptor3_main_loop(void)
 {
-	velociraptor3_debounce_loop();
-
 	switch(robot_state)
 	{
 	case stopped:
-		
+
 		if(debounce[2].flag && !debounce[2].state)
 		{
 			debounce[2].flag = 0;
 			pid.error_int = 0.f;
+			led_parp_flag = 1;
 			robot_state = running;
 		}
 		else if(debounce[1].flag && !debounce[1].state)
@@ -192,6 +199,19 @@ void velociraptor3_main_loop(void)
 			speed.r_speed = 1.0f;
 			velociraptor3_setpwm();
 			robot_state = cleaning;
+		}
+		else if(debounce[0].flag && !debounce[0].state)
+		{
+			debounce[0].flag = 0;
+			robot_state = comms;
+
+			memory_data.kp = pid.kp;
+			memory_data.ki = pid.ki;
+			memory_data.kd = pid.kd;
+			memory_data.brake_factor = speed.brake_factor;
+			memory_data.max_speed = speed.max_speed;
+			memory_data.slope_correction_factor = speed.slope_correction;
+			memory_data.track_color = sensors.track_color;
 		}
 		
 		break;
@@ -208,6 +228,7 @@ void velociraptor3_main_loop(void)
 		{
 			debounce[3].flag = 0;
 			velociraptor3_brake();
+			led_parp_flag = 0;
 			robot_state = stopped;
 		}
 
@@ -222,6 +243,26 @@ void velociraptor3_main_loop(void)
 			speed.r_speed = 0.0f;
 			velociraptor3_setpwm();
 			robot_state = stopped;
+		}
+
+		break;
+
+	case comms:
+
+		velociraptor3_comms_loop();
+
+		if(debounce[0].flag && !debounce[0].state)
+		{
+			debounce[0].flag = 0;
+			robot_state = stopped;
+
+			pid.kp = memory_data.kp;
+			pid.ki = memory_data.ki;
+			pid.kd = memory_data.kd;
+			speed.brake_factor = memory_data.brake_factor;
+			speed.max_speed = memory_data.max_speed;
+			speed.slope_correction = memory_data.slope_correction_factor;
+			sensors.track_color = memory_data.track_color;
 		}
 
 		break;
