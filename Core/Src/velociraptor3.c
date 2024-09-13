@@ -14,7 +14,7 @@
 extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim2, htim4;
 
-extern adxl_data_t adxl_data;
+extern adxl_data2_t adxl_data2;
 
 enum
 {
@@ -147,8 +147,8 @@ void velociraptor3_pid_init(void)
 
 	// TODO: cargar desde mem
 	pid.kp = 1.f;
-	pid.ki = 0.f;
-	pid.kd = .8f;
+	pid.ki = 0.001f;
+	pid.kd = .7f;
 
 	pid.prev_error = 0.f;
 }
@@ -259,6 +259,7 @@ void velociraptor3_sensors_routine(void)
 void velociraptor3_motors_pid(void)
 {
 	velociraptor3_calc_error();
+	velociraptor3_calc_slope();
 
 	pid.error_int += sensors.error;
 	pid.error_dv = sensors.error - pid.prev_error;
@@ -282,6 +283,22 @@ void velociraptor3_motors_pid(void)
 	speed.r_speed = speed.max_speed * (speed.base_speed - pid.correction);
 
 	velociraptor3_setpwm();
+}
+
+void velociraptor3_calc_slope(void)
+{
+	if(adxl_data2.x_avg > 80.f)
+	{
+		speed.slope_correction = 1.0f;
+	}
+	else if(adxl_data2.x_avg > 30.f)
+	{
+		speed.slope_correction = (adxl_data2.x_avg - 30.f) * 0.02f;
+	}
+	else
+	{
+		speed.slope_correction = 0.0f;
+	}
 }
 
 void velociraptor3_calc_error(void)

@@ -11,6 +11,7 @@
 extern SPI_HandleTypeDef hspi1;
 
 adxl_data_t adxl_data;
+adxl_data2_t adxl_data2;
 //adxl_data2_t adxl_data2;
 
 void ADXL345_Select(void) {
@@ -25,7 +26,7 @@ void ADXL345_Init(void) {
 	ADXL345_WriteRegister(0x2D, 0x08); // POWER_CTL register (0x2D): Set to measurement mode
 
 	// Set the output data rate (ODR) and range
-	ADXL345_WriteRegister(0x2C, 0x0A); // BW_RATE register (0x2C): Set ODR to 100 Hz (0x0A)
+	ADXL345_WriteRegister(0x2C, 0x09); // BW_RATE register (0x2C): Set ODR to 100 Hz (0x0A)
 
 	// Set the full-scale range
 	ADXL345_WriteRegister(0x31, 0x09); // DATA_FORMAT register (0x31): Full-resolution, ±16g (0x0B)
@@ -41,6 +42,9 @@ void ADXL345_Init(void) {
 
 	// lectura inicial para disparar el modo continuo (si no no anda!)
 	ADXL345_ReadXYZ(&(adxl_data.accel[0].x), &(adxl_data.accel[0].y), &(adxl_data.accel[0].z));
+
+	adxl_data2.ptr = 0;
+	adxl_data2.x_avg = 0;
 }
 
 uint8_t ADXL345_ReadRegister(uint8_t reg) {
@@ -88,6 +92,14 @@ void ADXL345_ReadXYZ(int16_t *x, int16_t *y, int16_t *z) {
     *z = (int16_t)((z1 << 8) | z0);
 }
 
+void ADXL345_ReadX(int16_t *x)
+{
+	uint8_t x0, x1;
+	x0 = ADXL345_ReadRegister(0x32); // X0
+	x1 = ADXL345_ReadRegister(0x33); // X1
+	*x = (int16_t) ((x1 << 8) | x0);
+}
+
 uint8_t ADXL345_CheckDevice(void) {
     uint8_t deviceID = ADXL345_ReadRegister(0x00); // 0x00 is the DEVID register
     if (deviceID == 0xE5) {
@@ -99,7 +111,7 @@ uint8_t ADXL345_CheckDevice(void) {
 
 void ADXL345_IRQHandler(void)
 {
-	int16_t *x, *y, *z;
+	/*int16_t *x, *y, *z;
 
 	//escritura en buffer inactivo
 	x = &(adxl_data.accel[!adxl_data.active_buffer].x);
@@ -108,5 +120,17 @@ void ADXL345_IRQHandler(void)
 
 	ADXL345_ReadXYZ(x, y, z);
 
-	adxl_data.active_buffer = !adxl_data.active_buffer;
+	adxl_data.active_buffer = !adxl_data.active_buffer;*/
+
+	ADXL345_ReadX(&(adxl_data2.x_read[adxl_data2.ptr]));
+
+	adxl_data2.ptr++;
+	adxl_data2.ptr %= BUF_LEN;
+
+	int16_t accum = 0;
+	for(uint8_t n_sample = 0; n_sample < BUF_LEN; n_sample++)
+	{
+		accum += adxl_data2.x_read[n_sample];
+	}
+	adxl_data2.x_avg = (float) accum / (float) BUF_LEN;
 }

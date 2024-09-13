@@ -25,6 +25,7 @@ void velociraptor3_main_loop(void);
 void velociraptor3_timer_handler(void);
 void velociraptor3_sensors_routine(void);
 void velociraptor3_motors_pid(void);
+void velociraptor3_calc_slope(void);
 void velociraptor3_calc_error(void);
 void velociraptor3_brake(void);
 void velociraptor3_setpwm(void);

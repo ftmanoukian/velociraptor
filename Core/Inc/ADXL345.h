@@ -11,6 +11,8 @@
 #define ADXL345_SPI_CS_PORT GPIOA
 #define ADXL345_SPI_CS_PIN GPIO_PIN_15
 
+#define BUF_LEN		32
+
 typedef struct
 {
 	uint8_t active_buffer;
@@ -19,6 +21,13 @@ typedef struct
 		int16_t x, y, z;
 	} accel[2];
 } adxl_data_t;
+
+typedef struct
+{
+	uint8_t ptr;
+	int16_t x_read[BUF_LEN];
+	float x_avg;
+} adxl_data2_t;
 
 void ADXL345_Select(void);
 void ADXL345_Deselect(void);
