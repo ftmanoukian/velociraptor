@@ -142,9 +142,9 @@ void velociraptor3_debounce_init(void)
 
 void velociraptor3_speed_init(void)
 {
-	speed.max_speed = 1.0f;
-	speed.brake_factor = 1.0f;
-	speed.slope_correction = 0.0f;
+	speed.max_speed = .63f;
+	speed.brake_factor = .2f;
+	speed.slope_correction = 0.1f;
 }
 
 void velociraptor3_pid_init(void)
@@ -154,9 +154,9 @@ void velociraptor3_pid_init(void)
 	pid.error_int = 0.f;
 
 	// TODO: cargar desde mem
-	pid.kp = 1.f;
-	pid.ki = 0.001f;
-	pid.kd = .7f;
+	pid.kp = .9f;
+	pid.ki = 0.0f;
+	pid.kd = 1.0f;
 
 	pid.prev_error = 0.f;
 }
