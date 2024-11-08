@@ -142,9 +142,9 @@ void velociraptor3_debounce_init(void)
 
 void velociraptor3_speed_init(void)
 {
-	speed.max_speed = .63f;
-	speed.brake_factor = .2f;
-	speed.slope_correction = 0.1f;
+	speed.max_speed = 0.9f;
+	speed.brake_factor = .0f;
+	speed.slope_correction = 0.0f;
 }
 
 void velociraptor3_pid_init(void)
@@ -154,9 +154,9 @@ void velociraptor3_pid_init(void)
 	pid.error_int = 0.f;
 
 	// TODO: cargar desde mem
-	pid.kp = .9f;
+	pid.kp = 2.5f;
 	pid.ki = 0.0f;
-	pid.kd = 1.0f;
+	pid.kd = 0.5f;
 
 	pid.prev_error = 0.f;
 }
@@ -167,7 +167,7 @@ void velociraptor3_sensors_init(void)
 	sensors.active_buffer = BUFFER_0;
 	sensors.flag_data_ready = 0;
 	sensors.prev_error = 0.f;
-	sensors.track_color = W_OVER_B;		// TODO: cargar desde mem
+	sensors.track_color = AUTO;		// TODO: cargar desde mem
 	
 	sensors.threshold[0] = 1000;
 	sensors.threshold[1] = 1500;
@@ -195,12 +195,12 @@ void velociraptor3_main_loop(void)
 		else if(debounce[1].flag && !debounce[1].state)
 		{
 			debounce[1].flag = 0;
-			speed.l_speed = 1.0f;
-			speed.r_speed = 1.0f;
+			speed.l_speed = .5f;
+			speed.r_speed = .5f;
 			velociraptor3_setpwm();
 			robot_state = cleaning;
 		}
-		else if(debounce[0].flag && !debounce[0].state)
+		/*else if(debounce[0].flag && !debounce[0].state)
 		{
 			debounce[0].flag = 0;
 			robot_state = comms;
@@ -212,7 +212,7 @@ void velociraptor3_main_loop(void)
 			memory_data.max_speed = speed.max_speed;
 			memory_data.slope_correction_factor = speed.slope_correction;
 			memory_data.track_color = sensors.track_color;
-		}
+		}*/
 		
 		break;
 
@@ -224,8 +224,16 @@ void velociraptor3_main_loop(void)
 			velociraptor3_motors_pid();
 		}
 		
-		if(debounce[3].flag && !debounce[3].state)
+		if(
+			debounce[0].flag && !debounce[0].state ||
+			debounce[1].flag && !debounce[1].state ||
+			debounce[2].flag && !debounce[2].state ||
+			debounce[3].flag && !debounce[3].state
+		)
 		{
+			debounce[0].flag = 0;
+			debounce[1].flag = 0;
+			debounce[2].flag = 0;
 			debounce[3].flag = 0;
 			velociraptor3_brake();
 			led_parp_flag = 0;
@@ -309,7 +317,21 @@ void velociraptor3_motors_pid(void)
 	pid.correction += pid.ki * pid.error_int;
 	pid.correction += pid.kd * pid.error_dv;
 
-	speed.base_speed = 1.0f;
+	speed.base_speed = speed.max_speed;
+	/*
+	 * if(pid.correction >= speed.max_speed)
+	{
+		speed.base_speed -= pid.correction;
+	}
+	else if(pid.correction <= speed.max_speed * -1.f)
+	{
+		speed.base_speed += pid.correction;
+	}*/
+
+	speed.l_speed = speed.base_speed + pid.correction;
+	speed.r_speed = speed.base_speed - pid.correction;
+
+	/*speed.base_speed = 1.0f;
 	if(pid.correction > 0.0f)
 	{
 		speed.base_speed -= pid.correction * speed.brake_factor;
@@ -321,7 +343,7 @@ void velociraptor3_motors_pid(void)
 	speed.base_speed *= (1.0f - speed.slope_correction);
 
 	speed.l_speed = speed.max_speed * (speed.base_speed + pid.correction);
-	speed.r_speed = speed.max_speed * (speed.base_speed - pid.correction);
+	speed.r_speed = speed.max_speed * (speed.base_speed - pid.correction);*/
 
 	velociraptor3_setpwm();
 }
